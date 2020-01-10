@@ -1,0 +1,127 @@
+---
+title: "Shellby Johnson- Lab 1"
+author: "Shellby Johnson"
+date: "January 9, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(kableExtra)
+
+```
+
+Read in noaa_fisheries.csv data
+Use the "here" package which tells R where to find the file you need to read in
+
+```{r}
+
+us_landings <- read_csv(here("data", "noaa_fisheries.csv"))
+
+```
+
+Now, make a tidy version of the data frame:
+- making all column names lower snake case
+- clean names makes lower snake case in the janitor package
+-str_to_lower makes the values in the columns specified lowercase
+
+```{r}
+
+landings_tidy <- us_landings %>% 
+  janitor::clean_names() %>% 
+  mutate(state = str_to_lower(state),
+         afs_name = str_to_lower(afs_name)) %>% 
+  mutate(dollars_num = parse_number(dollars_usd))
+
+
+```
+
+
+Get some info for salmon:
+
+1st, remove the word "aggregate"
+Then filter for everything in afs_clean that includes the word salmon
+
+filter(str_detect(afs_clean, pattern = "salmon")) >>> does this pattern exists in this column, if so then "TRUE" and R returns only those
+
+separate(afs_clean, into = c("group", "species"), sep = ",") >>> separate this column into the 2 columns "group" and "species" and you will separate it by the "," in afs_clean
+```{r}
+
+salmon_landings <- landings_tidy %>%
+  mutate(afs_clean = str_remove(afs_name, pattern = "aggregate")) %>% 
+  filter(str_detect(afs_clean, pattern = "salmon")) %>% 
+  separate(afs_clean, into = c("group", "species"), sep = ",")
+
+```
+
+
+Find some group summary data
+
+Find annual total US landings and dollar value (summing across all states) for each TYPE of salmon using 'group_by' +'summarize'
+
+```{r}
+
+salmon_summary <- salmon_landings %>% 
+  group_by(year,species) %>% 
+  summarize(
+    tot_landings = sum(landings_pounds), 
+    tot_value = sum(dollars_num)
+  )
+
+```
+
+
+Make a grapgh!
+
+```{r}
+
+salmon_landings_graph <- ggplot(data = salmon_summary, aes(x = year, y = tot_landings)) +
+  geom_line(aes(color = species))+
+  theme_minimal()
+
+salmon_landings_graph
+
+```
+
+Now we will export the graph with ggsave
+ggsave will export a grapgh of your choosing, if will auto save the last graph you ran unless you specify
+
+```{r}
+
+ggsave(plot = salmon_landings_graph, 
+       here("figures", "us_salmon_sj.png"),
+       height = 5,
+       width = 8)
+
+```
+
+
+
+Make a nice kable table
+- only want 1st 5 lines
+
+```{r}
+
+salmon_5 <- salmon_summary %>% 
+  head(5)
+
+```
+
+Use Kable
+
+```{r}
+
+kable(salmon_5) %>% 
+  kable_styling(bootstrap_options = "striped",
+                full_width = FALSE)
+
+
+```
+
